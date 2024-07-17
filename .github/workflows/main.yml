@@ -1,25 +1,32 @@
-name: Deploy to GitHub Pages
+name: Deploy to Netlify
 
-# Run workflow on every push to the master branch
 on:
   push:
     branches: [ main ]
-    
-    jobs:
-  build-and-deploy:
-    # use ubuntu-latest image to run steps on
-    runs-on: macOS
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Deploying to Netlify
     steps:
-        # uses GitHub's checkout action to checkout code form the master branch
-    - uses: actions/checkout@v2
-    
-        # sets up .NET Core SDK 3.1
-    - name: Setup .NET Core SDK
+    - uses: actions/checkout@master
+
+    - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 3.1
-        
-     # publishes Blazor project to the release-folder
-    - name: Publish .NET Core Project
-      run: dotnet publish MyBlazorPwaDemo.csproj -c Release -o release --nologo
+        dotnet-version: 3.1.300
 
+    - name: Build with dotnet
+      run: dotnet build --configuration Release
+
+    - name: Publish Blazor webassembly using dotnet
+      run: dotnet publish -c Release --no-build -o publishoutput
+
+    - name: Publish generated Blazor webassembly to Netlify
+      uses: netlify/actions/cli@master
+      env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      with:
+          args: deploy --dir=publishoutput/wwwroot --prod
+          secrets: '["NETLIFY_AUTH_TOKEN", "NETLIFY_SITE_ID"]'
